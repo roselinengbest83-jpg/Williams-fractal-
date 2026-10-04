@@ -14,7 +14,7 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
 
 // Deriv public WebSocket
 const DERIV_WS_URL =
-  "wss://ws.derivws.com/websockets/v3?app_id=1089";
+  "wss://ws.binaryws.com/websockets/v3";
 
 // Strategy settings
 const FRACTAL_PERIODS = 2;
