@@ -2,117 +2,384 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deriv Forex Fractal Scanner</title>
 
-  <link rel="stylesheet" href="/style.css">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#070b12"
+  >
+
+  <title>Fractal Forex Scanner</title>
+
+  <link
+    rel="stylesheet"
+    href="/style.css"
+  >
 </head>
 
 <body>
 
-  <header class="topbar">
-    <div>
-      <h1>Deriv Forex Fractal Scanner</h1>
-      <p>12H → 1H → 15M Fractal Trend Line → 5M Confirmation</p>
-    </div>
+  <div class="app">
 
-    <div class="status-box">
-      <span id="systemDot" class="dot"></span>
-      <span id="systemStatus">Connecting...</span>
-    </div>
-  </header>
+    <!-- =========================
+         HEADER
+    ========================== -->
 
-  <main class="container">
+    <header class="topbar">
 
-    <section class="hero-card">
-      <div>
-        <span class="label">SCANNER</span>
-        <h2>Williams Fractal Strategy</h2>
-        <p>
-          The scanner automatically checks the 10 forex pairs using
-          Deriv market prices.
-        </p>
+      <div class="brand">
+
+        <div class="brand-icon">
+          FX
+        </div>
+
+        <div class="brand-text">
+          <h1>Fractal Forex Scanner</h1>
+
+          <p>
+            12H → 1H → 15M Williams Fractal → 5M Confirmation
+          </p>
+        </div>
+
       </div>
 
-      <div class="scan-info">
-        <div>
-          <span>Last Scan</span>
-          <strong id="lastScan">--</strong>
+      <div class="connection-status">
+
+        <span
+          id="systemDot"
+          class="status-dot offline"
+        ></span>
+
+        <span id="systemStatus">
+          Connecting...
+        </span>
+
+      </div>
+
+    </header>
+
+
+    <!-- =========================
+         STAT CARDS
+    ========================== -->
+
+    <section class="stats-grid">
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          ◉
         </div>
 
         <div>
-          <span>Pairs</span>
-          <strong id="pairCount">10</strong>
+          <span class="stat-label">
+            MARKET SOURCE
+          </span>
+
+          <strong>
+            DERIV
+          </strong>
         </div>
+
       </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          #
+        </div>
+
+        <div>
+          <span class="stat-label">
+            FOREX PAIRS
+          </span>
+
+          <strong id="pairCount">
+            20
+          </strong>
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          ◷
+        </div>
+
+        <div>
+          <span class="stat-label">
+            LAST SCAN
+          </span>
+
+          <strong id="lastScan">
+            --
+          </strong>
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          ⚡
+        </div>
+
+        <div>
+          <span class="stat-label">
+            SIGNALS
+          </span>
+
+          <strong id="signalCount">
+            0
+          </strong>
+        </div>
+
+      </div>
+
     </section>
 
-    <section class="strategy-card">
-      <h2>Strategy Flow</h2>
+
+    <!-- =========================
+         STRATEGY FLOW
+    ========================== -->
+
+    <section class="panel strategy-panel">
+
+      <div class="panel-heading">
+
+        <div>
+          <h2>Strategy Flow</h2>
+
+          <p>
+            Multi-timeframe confirmation system
+          </p>
+        </div>
+
+        <div class="strategy-badge">
+          FRACTAL SYSTEM
+        </div>
+
+      </div>
+
 
       <div class="strategy-flow">
-        <div class="step">
-          <strong>12H</strong>
-          <span>Direction</span>
+
+        <div class="flow-card active">
+
+          <span class="flow-number">
+            01
+          </span>
+
+          <strong>
+            12H
+          </strong>
+
+          <small>
+            Direction
+          </small>
+
         </div>
 
-        <div class="arrow">→</div>
 
-        <div class="step">
-          <strong>1H</strong>
-          <span>Structure</span>
+        <div class="flow-arrow">
+          →
         </div>
 
-        <div class="arrow">→</div>
 
-        <div class="step">
-          <strong>15M</strong>
-          <span>Fractal Line</span>
+        <div class="flow-card">
+
+          <span class="flow-number">
+            02
+          </span>
+
+          <strong>
+            1H
+          </strong>
+
+          <small>
+            Structure
+          </small>
+
         </div>
 
-        <div class="arrow">→</div>
 
-        <div class="step">
-          <strong>Break</strong>
-          <span>Candle Close</span>
+        <div class="flow-arrow">
+          →
         </div>
 
-        <div class="arrow">→</div>
 
-        <div class="step">
-          <strong>Retest</strong>
-          <span>Rejection</span>
+        <div class="flow-card">
+
+          <span class="flow-number">
+            03
+          </span>
+
+          <strong>
+            15M
+          </strong>
+
+          <small>
+            Fractal Trend
+          </small>
+
         </div>
 
-        <div class="arrow">→</div>
 
-        <div class="step">
-          <strong>5M</strong>
-          <span>Confirmation</span>
+        <div class="flow-arrow">
+          →
         </div>
+
+
+        <div class="flow-card">
+
+          <span class="flow-number">
+            04
+          </span>
+
+          <strong>
+            BREAK
+          </strong>
+
+          <small>
+            Candle Close
+          </small>
+
+        </div>
+
+
+        <div class="flow-arrow">
+          →
+        </div>
+
+
+        <div class="flow-card">
+
+          <span class="flow-number">
+            05
+          </span>
+
+          <strong>
+            RETEST
+          </strong>
+
+          <small>
+            Rejection
+          </small>
+
+        </div>
+
+
+        <div class="flow-arrow">
+          →
+        </div>
+
+
+        <div class="flow-card">
+
+          <span class="flow-number">
+            06
+          </span>
+
+          <strong>
+            5M
+          </strong>
+
+          <small>
+            Confirmation
+          </small>
+
+        </div>
+
       </div>
+
     </section>
 
-    <section>
-      <div class="section-title">
-        <h2>Forex Pairs</h2>
-        <span id="signalCount">0 signals</span>
+
+    <!-- =========================
+         FOREX SCANNER
+    ========================== -->
+
+    <section class="panel">
+
+      <div class="panel-heading">
+
+        <div>
+          <h2>Forex Scanner</h2>
+
+          <p>
+            Monitoring 20 forex pairs through Deriv
+          </p>
+        </div>
+
+
+        <div
+          id="scannerBadge"
+          class="scanner-badge"
+        >
+          CONNECTING
+        </div>
+
       </div>
 
-      <div id="pairsGrid" class="pairs-grid">
-        <div class="loading">
-          Loading market data...
+
+      <!-- PAIRS WILL BE INSERTED HERE -->
+
+      <div
+        id="pairsGrid"
+        class="pairs-grid"
+      >
+
+        <div class="loading-card">
+
+          <div class="loading-spinner"></div>
+
+          <strong>
+            Connecting to Deriv...
+          </strong>
+
+          <span>
+            Waiting for scanner data
+          </span>
+
         </div>
+
       </div>
+
     </section>
 
-  </main>
 
-  <footer>
-    <p>
-      Deriv Forex Fractal Bot • Signal-only scanner • No automatic trades
-    </p>
-  </footer>
+    <!-- =========================
+         FOOTER
+    ========================== -->
+
+    <footer>
+
+      <div>
+        <strong>
+          Fractal Forex Scanner
+        </strong>
+
+        <span>
+          Deriv Market Data
+        </span>
+      </div>
+
+      <div>
+        Signal only • No automatic trading
+      </div>
+
+    </footer>
+
+  </div>
+
 
   <script src="/script.js"></script>
 
