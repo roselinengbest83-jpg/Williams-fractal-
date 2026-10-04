@@ -8,462 +8,404 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <meta
-    name="theme-color"
-    content="#06152f"
-  >
-
   <title>Fractal Forex Scanner</title>
 
   <link
     rel="stylesheet"
-    href="/style.css"
+    href="/style.css?v=20"
   >
 </head>
 
 <body>
 
-  <!-- =========================================
-       APP
-  ========================================== -->
-
   <div class="app">
 
-    <!-- =======================================
-         HEADER
-    ======================================== -->
+    <!-- HEADER -->
 
     <header class="topbar">
 
       <div class="brand">
 
-        <div class="brand-logo">
+        <div class="brand-icon">
           FX
         </div>
 
-        <div class="brand-text">
+        <div>
+          <div class="brand-name">
+            FRACTAL
+          </div>
 
-          <h1>
-            Fractal Forex Scanner
-          </h1>
-
-          <p>
-            12H → 1H → 15M Williams Fractal → 5M Confirmation
-          </p>
-
+          <div class="brand-sub">
+            FOREX SCANNER
+          </div>
         </div>
 
       </div>
 
-
-      <div class="header-actions">
-
-        <div class="connection">
-
-          <span
-            id="systemDot"
-            class="status-dot offline"
-          ></span>
-
-          <div>
-
-            <strong id="systemStatus">
-              Connecting to Deriv...
-            </strong>
-
-            <small>
-              Market Data
-            </small>
-
-          </div>
-
-        </div>
-
-
-        <button
-          class="scan-button"
-          onclick="manualScan()"
-        >
-          <span>↻</span>
-          Scan Now
-        </button>
-
+      <div class="scanner-badge" id="scannerBadge">
+        CONNECTING
       </div>
 
     </header>
 
 
-    <!-- =======================================
-         MAIN
-    ======================================== -->
+    <!-- HERO -->
 
-    <main>
+    <section class="hero">
+
+      <div class="hero-label">
+        WILLIAMS FRACTAL SYSTEM
+      </div>
+
+      <h1>
+        Fractal Forex
+        <span>Scanner</span>
+      </h1>
+
+      <p>
+        12H → 1H → 15M Williams Fractal
+        → Retest → 5M Confirmation
+      </p>
+
+      <div class="connection">
+
+        <span
+          class="status-dot offline"
+          id="systemDot"
+        ></span>
+
+        <span id="systemStatus">
+          Connecting to Deriv...
+        </span>
+
+        <span class="market-data">
+          MARKET DATA
+        </span>
+
+      </div>
+
+      <button
+        class="scan-button"
+        onclick="manualScan()"
+      >
+        ↻ SCAN NOW
+      </button>
+
+    </section>
 
 
-      <!-- =====================================
-           SUMMARY CARDS
-      ====================================== -->
+    <!-- STATS -->
 
-      <section class="summary-grid">
+    <section class="stats">
 
+      <div class="stat-card">
 
-        <div class="summary-card">
-
-          <div class="summary-icon blue">
-            ◈
-          </div>
-
-          <div>
-
-            <span>
-              MARKET SOURCE
-            </span>
-
-            <strong>
-              DERIV
-            </strong>
-
-          </div>
-
+        <div class="stat-icon">
+          ◈
         </div>
 
-
-        <div class="summary-card">
-
-          <div class="summary-icon purple">
-            #
-          </div>
-
-          <div>
-
-            <span>
-              FOREX PAIRS
-            </span>
-
-            <strong id="pairCount">
-              20
-            </strong>
-
-          </div>
-
+        <div class="stat-label">
+          MARKET SOURCE
         </div>
 
-
-        <div class="summary-card">
-
-          <div class="summary-icon green">
-            ◷
-          </div>
-
-          <div>
-
-            <span>
-              LAST SCAN
-            </span>
-
-            <strong id="lastScan">
-              --
-            </strong>
-
-          </div>
-
+        <div class="stat-value">
+          DERIV
         </div>
 
+      </div>
 
-        <div class="summary-card">
 
-          <div class="summary-icon orange">
-            ⚡
-          </div>
+      <div class="stat-card">
 
-          <div>
-
-            <span>
-              SIGNALS
-            </span>
-
-            <strong id="signalCount">
-              0
-            </strong>
-
-          </div>
-
+        <div class="stat-icon">
+          #
         </div>
 
-      </section>
-
-
-      <!-- =====================================
-           STRATEGY FLOW
-      ====================================== -->
-
-      <section class="panel strategy-panel">
-
-        <div class="panel-heading">
-
-          <div class="panel-title">
-
-            <div class="panel-icon">
-              ◈
-            </div>
-
-            <div>
-
-              <h2>
-                Strategy Flow
-              </h2>
-
-              <p>
-                Multi-timeframe confirmation system
-              </p>
-
-            </div>
-
-          </div>
-
-
-          <div class="system-badge">
-            FRACTAL SYSTEM
-          </div>
-
+        <div class="stat-label">
+          FOREX PAIRS
         </div>
-
-
-        <div class="flow">
-
-          <div class="flow-step">
-
-            <div class="step-number">
-              01
-            </div>
-
-            <div>
-
-              <strong>
-                12H
-              </strong>
-
-              <span>
-                Direction
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <div class="flow-arrow">
-            →
-          </div>
-
-
-          <div class="flow-step">
-
-            <div class="step-number">
-              02
-            </div>
-
-            <div>
-
-              <strong>
-                1H
-              </strong>
-
-              <span>
-                Structure
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <div class="flow-arrow">
-            →
-          </div>
-
-
-          <div class="flow-step">
-
-            <div class="step-number">
-              03
-            </div>
-
-            <div>
-
-              <strong>
-                15M
-              </strong>
-
-              <span>
-                Fractal Trend
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <div class="flow-arrow purple-arrow">
-            →
-          </div>
-
-
-          <div class="flow-step purple-step">
-
-            <div class="step-number">
-              04
-            </div>
-
-            <div>
-
-              <strong>
-                BREAK
-              </strong>
-
-              <span>
-                Candle Close
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <div class="flow-arrow green-arrow">
-            →
-          </div>
-
-
-          <div class="flow-step green-step">
-
-            <div class="step-number">
-              05
-            </div>
-
-            <div>
-
-              <strong>
-                RETEST
-              </strong>
-
-              <span>
-                Rejection
-              </span>
-
-            </div>
-
-          </div>
-
-
-          <div class="flow-arrow green-arrow">
-            →
-          </div>
-
-
-          <div class="flow-step green-step">
-
-            <div class="step-number">
-              06
-            </div>
-
-            <div>
-
-              <strong>
-                5M
-              </strong>
-
-              <span>
-                Confirmation
-              </span>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <!-- =====================================
-           FOREX SCANNER
-      ====================================== -->
-
-      <section class="panel scanner-panel">
-
-        <div class="panel-heading">
-
-          <div class="panel-title">
-
-            <div class="panel-icon scanner-icon">
-              ▮▮▮
-            </div>
-
-            <div>
-
-              <h2>
-                Forex Scanner
-              </h2>
-
-              <p>
-                Monitoring 20 forex pairs through Deriv
-              </p>
-
-            </div>
-
-          </div>
-
-
-          <div class="pair-badge">
-            20 PAIRS
-          </div>
-
-        </div>
-
-
-        <!-- PAIRS ARE INSERTED BY SCRIPT.JS -->
 
         <div
-          id="pairsGrid"
-          class="pairs-grid"
+          class="stat-value"
+          id="pairCount"
         >
+          20
+        </div>
 
-          <div class="loading-card">
+      </div>
 
-            <div class="loading-spinner"></div>
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          ◷
+        </div>
+
+        <div class="stat-label">
+          LAST SCAN
+        </div>
+
+        <div
+          class="stat-value small"
+          id="lastScan"
+        >
+          --
+        </div>
+
+      </div>
+
+
+      <div class="stat-card signal-stat">
+
+        <div class="stat-icon">
+          ⚡
+        </div>
+
+        <div class="stat-label">
+          SIGNALS
+        </div>
+
+        <div
+          class="stat-value"
+          id="signalCount"
+        >
+          0
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- STRATEGY -->
+
+    <section class="strategy-section">
+
+      <div class="section-title">
+        STRATEGY FLOW
+      </div>
+
+      <div class="section-subtitle">
+        Multi-timeframe confirmation system
+      </div>
+
+
+      <div class="strategy-flow">
+
+        <div class="flow-step">
+
+          <div class="step-number">
+            01
+          </div>
+
+          <div class="step-content">
 
             <strong>
-              Connecting to Deriv...
+              12H Direction
             </strong>
 
             <span>
-              Loading forex pairs
+              Overall market bias
             </span>
 
           </div>
 
         </div>
 
-      </section>
 
-    </main>
+        <div class="flow-arrow">
+          →
+        </div>
 
 
-    <!-- =======================================
-         FOOTER
-    ======================================== -->
+        <div class="flow-step">
+
+          <div class="step-number">
+            02
+          </div>
+
+          <div class="step-content">
+
+            <strong>
+              1H Structure
+            </strong>
+
+            <span>
+              Trend confirmation
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="flow-arrow">
+          →
+        </div>
+
+
+        <div class="flow-step">
+
+          <div class="step-number">
+            03
+          </div>
+
+          <div class="step-content">
+
+            <strong>
+              15M Fractal Trend
+            </strong>
+
+            <span>
+              Williams Fractal trend line
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="flow-arrow">
+          →
+        </div>
+
+
+        <div class="flow-step">
+
+          <div class="step-number">
+            04
+          </div>
+
+          <div class="step-content">
+
+            <strong>
+              Candle Close
+            </strong>
+
+            <span>
+              Break beyond trend line
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="flow-arrow">
+          →
+        </div>
+
+
+        <div class="flow-step">
+
+          <div class="step-number">
+            05
+          </div>
+
+          <div class="step-content">
+
+            <strong>
+              Retest
+            </strong>
+
+            <span>
+              Rejection confirmation
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="flow-arrow">
+          →
+        </div>
+
+
+        <div class="flow-step">
+
+          <div class="step-number">
+            06
+          </div>
+
+          <div class="step-content">
+
+            <strong>
+              5M Confirmation
+            </strong>
+
+            <span>
+              Entry confirmation
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- PAIRS -->
+
+    <section class="pairs-section">
+
+      <div class="pairs-heading">
+
+        <div>
+
+          <div class="section-title">
+            FOREX PAIRS
+          </div>
+
+          <div class="section-subtitle">
+            Live Deriv market monitoring
+          </div>
+
+        </div>
+
+        <div class="pairs-count">
+          20 PAIRS
+        </div>
+
+      </div>
+
+
+      <div
+        id="pairsGrid"
+        class="pairs-grid"
+      >
+
+        <div class="loading-card">
+
+          <div class="loading-spinner"></div>
+
+          <strong>
+            Loading forex pairs...
+          </strong>
+
+          <span>
+            Connecting to Deriv market data
+          </span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- FOOTER -->
 
     <footer>
 
       <div>
-        Fractal Forex Scanner
-        <span>│</span>
-        Deriv Market Data
+        FRACTAL FOREX SCANNER
       </div>
 
       <div>
-        Signal only • No automatic trading
+        DERIV MARKET DATA • SIGNAL ONLY
       </div>
 
     </footer>
@@ -471,62 +413,38 @@
   </div>
 
 
-  <!-- =========================================
-       SCRIPT
-  ========================================== -->
-
-  <script src="/script.js"></script>
-
+  <script src="/script.js?v=20"></script>
 
   <script>
 
     async function manualScan() {
 
-      const button =
-        document.querySelector(
-          ".scan-button"
-        );
-
-      if (!button) return;
-
-      const original =
-        button.innerHTML;
-
-      button.innerHTML =
-        "<span>↻</span> Scanning...";
-
-      button.disabled = true;
-
       try {
 
-        await fetch(
-          "/api/scan",
-          {
-            method: "POST"
-          }
+        const response =
+          await fetch(
+            "/api/scan",
+            {
+              method: "POST"
+            }
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          "[SCAN]",
+          data
         );
 
       } catch (error) {
 
         console.error(
-          "Manual scan error:",
+          "[SCAN]",
           error
         );
 
       }
-
-      setTimeout(
-        () => {
-
-          button.innerHTML =
-            original;
-
-          button.disabled =
-            false;
-
-        },
-        1500
-      );
 
     }
 
