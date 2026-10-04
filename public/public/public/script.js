@@ -1,219 +1,230 @@
-async function loadStatus() {
+async function loadDashboard() {
   try {
     const response = await fetch("/api/status");
-
-    if (!response.ok) {
-      throw new Error("Server response failed");
-    }
-
     const data = await response.json();
 
-    updateSystemStatus(data);
-    updateDashboard(data);
-
+    updateSystem(data);
+    updatePairs(data);
   } catch (error) {
     console.error("Dashboard error:", error);
-
-    const status = document.getElementById("systemStatus");
-    const dot = document.getElementById("systemDot");
-
-    if (status) {
-      status.textContent = "Offline";
-    }
-
-    if (dot) {
-      dot.style.background = "#ff4d67";
-    }
+    document.getElementById("systemStatus").textContent =
+      "Connection Error";
   }
 }
 
-
-function updateSystemStatus(data) {
-  const status = document.getElementById("systemStatus");
+function updateSystem(data) {
   const dot = document.getElementById("systemDot");
+  const status = document.getElementById("systemStatus");
+  const lastScan = document.getElementById("lastScan");
+  const pairCount = document.getElementById("pairCount");
 
-  if (!status || !dot) return;
-
-  if (data && data.running !== false) {
-    status.textContent = "Scanner Online";
-    dot.style.background = "#45e08a";
+  if (data.system?.derivConnected) {
+    dot.className = "dot online";
+    status.textContent = data.system.marketClosed
+      ? "Market Closed"
+      : "Deriv Connected";
   } else {
-    status.textContent = "Scanner Offline";
-    dot.style.background = "#ff4d67";
+    dot.className = "dot offline";
+    status.textContent = "Connecting...";
+  }
+
+  pairCount.textContent =
+    data.system?.pairCount || 0;
+
+  if (data.system?.lastScan) {
+    lastScan.textContent =
+      new Date(
+        data.system.lastScan
+      ).toLocaleTimeString();
+  } else {
+    lastScan.textContent = "--";
   }
 }
 
+function updatePairs(data) {
+  const grid =
+    document.getElementById("pairsGrid");
 
-function updateDashboard(data) {
-  const pairsGrid = document.getElementById("pairsGrid");
-  const lastScan = document.getElementById("lastScan");
-  const signalCount = document.getElementById("signalCount");
+  const signalCount =
+    document.getElementById("signalCount");
 
-  if (!pairsGrid) return;
+  if (!grid) return;
 
   const pairs = data.pairs || {};
-  const pairNames = Object.keys(pairs);
 
-  if (pairNames.length === 0) {
-    pairsGrid.innerHTML = `
-      <div class="loading">
-        Waiting for scanner data...
-      </div>
-    `;
-    return;
-  }
+  const pairNames = Object.keys(pairs);
 
   let signals = 0;
 
-  pairsGrid.innerHTML = pairNames.map(pair => {
+  grid.innerHTML = "";
 
-    const item = pairs[pair] || {};
-
-    const signal = String(item.signal || "WAIT").toUpperCase();
-
-    if (signal === "BUY" || signal === "SELL") {
-      signals++;
-    }
-
-    const signalClass =
-      signal === "BUY"
-        ? "buy"
-        : signal === "SELL"
-        ? "sell"
-        : "wait";
-
-    return `
-      <div class="pair-card">
-
-        <div class="pair-header">
-          <div class="pair-name">${pair}</div>
-
-          <div class="signal ${signalClass}">
-            ${signal}
-          </div>
-        </div>
-
-        <div class="metrics">
-
-          <div class="metric">
-            <span>12H Direction</span>
-            <strong>${formatDirection(item.direction12H)}</strong>
-          </div>
-
-          <div class="metric">
-            <span>1H Structure</span>
-            <strong>${formatDirection(item.structure1H)}</strong>
-          </div>
-
-          <div class="metric">
-            <span>15M Trend</span>
-            <strong>${formatDirection(item.trend15M)}</strong>
-          </div>
-
-          <div class="metric">
-            <span>15M Line Break</span>
-            <strong>${formatBoolean(item.lineBreak)}</strong>
-          </div>
-
-          <div class="metric">
-            <span>Retest / Rejection</span>
-            <strong>${formatBoolean(item.retest)}</strong>
-          </div>
-
-          <div class="metric">
-            <span>5M Confirmation</span>
-            <strong>${formatBoolean(item.confirm5M)}</strong>
-          </div>
-
-        </div>
-
-        <div class="price-area">
-
-          <div>
-            <span>Entry</span>
-            <strong>${formatPrice(item.entry)}</strong>
-          </div>
-
-          <div>
-            <span>Stop Loss</span>
-            <strong>${formatPrice(item.sl)}</strong>
-          </div>
-
-          <div>
-            <span>Take Profit</span>
-            <strong>${formatPrice(item.tp)}</strong>
-          </div>
-
-          <div>
-            <span>R:R</span>
-            <strong>1 : 2</strong>
-          </div>
-
-        </div>
-
+  if (pairNames.length === 0) {
+    grid.innerHTML = `
+      <div class="loading">
+        Waiting for forex pairs...
       </div>
     `;
 
-  }).join("");
-
-  if (lastScan && data.lastScan) {
-    lastScan.textContent = new Date(data.lastScan)
-      .toLocaleTimeString();
+    return;
   }
 
-  if (signalCount) {
-    signalCount.textContent =
-      `${signals} signal${signals === 1 ? "" : "s"}`;
-  }
+  pairNames.forEach(pair => {
+    const item = pairs[pair];
+
+    if (
+      item.status === "BUY SIGNAL" ||
+      item.status === "SELL SIGNAL"
+    ) {
+      signals++;
+    }
+
+    const directionClass =
+      item.direction12H === "BULLISH"
+        ? "bullish"
+        : item.direction12H === "BEARISH"
+        ? "bearish"
+        : "";
+
+    const statusClass =
+      item.status === "BUY SIGNAL"
+        ? "buy"
+        : item.status === "SELL SIGNAL"
+        ? "sell"
+        : item.status === "MARKET CLOSED"
+        ? "closed"
+        : "";
+
+    const card =
+      document.createElement("div");
+
+    card.className = "pair-card";
+
+    card.innerHTML = `
+      <div class="pair-header">
+        <div>
+          <h3>${pair}</h3>
+          <span class="pair-status ${statusClass}">
+            ${item.status || "WAIT"}
+          </span>
+        </div>
+
+        <div class="direction ${directionClass}">
+          ${item.direction12H || "WAIT"}
+        </div>
+      </div>
+
+      <div class="strategy-grid">
+
+        <div class="strategy-item">
+          <span>12H</span>
+          <strong>
+            ${item.direction12H || "WAIT"}
+          </strong>
+        </div>
+
+        <div class="strategy-item">
+          <span>1H</span>
+          <strong>
+            ${item.structure1H || "WAIT"}
+          </strong>
+        </div>
+
+        <div class="strategy-item">
+          <span>15M Trend</span>
+          <strong>
+            ${item.trend15M || "WAIT"}
+          </strong>
+        </div>
+
+        <div class="strategy-item">
+          <span>15M Break</span>
+          <strong>
+            ${item.break15M || "WAIT"}
+          </strong>
+        </div>
+
+        <div class="strategy-item">
+          <span>Retest</span>
+          <strong>
+            ${item.retest15M || "WAIT"}
+          </strong>
+        </div>
+
+        <div class="strategy-item">
+          <span>5M</span>
+          <strong>
+            ${item.confirm5M || "WAIT"}
+          </strong>
+        </div>
+
+      </div>
+
+      ${
+        item.signal
+          ? `
+            <div class="signal-box">
+              <div>
+                <span>Entry</span>
+                <strong>${item.entry}</strong>
+              </div>
+
+              <div>
+                <span>Stop Loss</span>
+                <strong>${item.stopLoss}</strong>
+              </div>
+
+              <div>
+                <span>Take Profit</span>
+                <strong>${item.takeProfit}</strong>
+              </div>
+
+              <div>
+                <span>R:R</span>
+                <strong>1:${item.riskReward}</strong>
+              </div>
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        item.error
+          ? `
+            <div class="error-message">
+              ${item.error}
+            </div>
+          `
+          : ""
+      }
+
+      <div class="pair-footer">
+        Last scan:
+        ${
+          item.lastScan
+            ? new Date(
+                item.lastScan
+              ).toLocaleTimeString()
+            : "--"
+        }
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+
+  signalCount.textContent =
+    `${signals} signal${signals === 1 ? "" : "s"}`;
 }
 
+/*
+========================================================
+AUTO REFRESH
+========================================================
+*/
 
-function formatDirection(value) {
+loadDashboard();
 
-  if (value === 1 || value === "1") {
-    return "BULLISH";
-  }
-
-  if (value === -1 || value === "-1") {
-    return "BEARISH";
-  }
-
-  return "WAIT";
-}
-
-
-function formatBoolean(value) {
-
-  if (value === true) {
-    return "YES";
-  }
-
-  if (value === false) {
-    return "NO";
-  }
-
-  return "--";
-}
-
-
-function formatPrice(value) {
-
-  if (value === undefined || value === null) {
-    return "--";
-  }
-
-  const number = Number(value);
-
-  if (Number.isNaN(number)) {
-    return "--";
-  }
-
-  return number.toFixed(3);
-}
-
-
-// Load immediately
-loadStatus();
-
-// Refresh dashboard every 10 seconds
-setInterval(loadStatus, 10000);
+setInterval(
+  loadDashboard,
+  5000
+);
