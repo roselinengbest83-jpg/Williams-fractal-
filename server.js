@@ -1930,8 +1930,8 @@ async function scanPair(
         "MARKET CLOSED";
 
       console.log(
-        `[SCAN] ${pair}: Market closed`
-      );
+  `[SCAN] ${pair}: MARKET CLOSED`
+);
 
       return;
     }
@@ -1973,8 +1973,8 @@ async function scanAllPairs() {
     new Date().toISOString();
 
   console.log(
-    `[SCAN] Starting scan of ${PAIRS.length} pairs`
-  );
+  `[SCAN] Starting scan of ${PAIRS.length} pairs...`
+);
 
   try {
 
