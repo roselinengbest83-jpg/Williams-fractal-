@@ -1633,7 +1633,7 @@ SCAN ONE PAIR
 
 async function scanPair(
   pair
-) {
+) {console.log(`[SCAN] Checking ${pair}...`);
 
   const currentState =
     state[pair];
