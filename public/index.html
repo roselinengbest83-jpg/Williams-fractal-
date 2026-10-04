@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deriv Forex Fractal Scanner</title>
+
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div>
+      <h1>Deriv Forex Fractal Scanner</h1>
+      <p>12H → 1H → 15M Fractal Trend Line → 5M Confirmation</p>
+    </div>
+
+    <div class="status-box">
+      <span id="systemDot" class="dot"></span>
+      <span id="systemStatus">Connecting...</span>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section class="hero-card">
+      <div>
+        <span class="label">SCANNER</span>
+        <h2>Williams Fractal Strategy</h2>
+        <p>
+          The scanner automatically checks the 10 forex pairs using
+          Deriv market prices.
+        </p>
+      </div>
+
+      <div class="scan-info">
+        <div>
+          <span>Last Scan</span>
+          <strong id="lastScan">--</strong>
+        </div>
+
+        <div>
+          <span>Pairs</span>
+          <strong id="pairCount">10</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="strategy-card">
+      <h2>Strategy Flow</h2>
+
+      <div class="strategy-flow">
+        <div class="step">
+          <strong>12H</strong>
+          <span>Direction</span>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="step">
+          <strong>1H</strong>
+          <span>Structure</span>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="step">
+          <strong>15M</strong>
+          <span>Fractal Line</span>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="step">
+          <strong>Break</strong>
+          <span>Candle Close</span>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="step">
+          <strong>Retest</strong>
+          <span>Rejection</span>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="step">
+          <strong>5M</strong>
+          <span>Confirmation</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">
+        <h2>Forex Pairs</h2>
+        <span id="signalCount">0 signals</span>
+      </div>
+
+      <div id="pairsGrid" class="pairs-grid">
+        <div class="loading">
+          Loading market data...
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>
+      Deriv Forex Fractal Bot • Signal-only scanner • No automatic trades
+    </p>
+  </footer>
+
+  <script src="/script.js"></script>
+
+</body>
+</html>
