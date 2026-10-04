@@ -1,0 +1,13 @@
+{
+  "name": "deriv-forex-fractal-bot",
+  "version": "1.1.0",
+  "description": "Deriv Forex Williams Fractal Trend Line Signal Bot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}
