@@ -132,7 +132,7 @@ for (const pair of PAIRS) {
 
 
 /* =========================================================
-   DERIV CONNECTION STATE
+   DERIV CONNECTION
 ========================================================= */
 
 let derivSocket = null;
@@ -151,7 +151,7 @@ const pendingRequests = new Map();
 
 
 /* =========================================================
-   HELPERS
+   GENERAL HELPERS
 ========================================================= */
 
 function sleep(ms) {
@@ -184,7 +184,7 @@ function roundPrice(value, pair) {
 
 
 /* =========================================================
-   DERIV SYMBOL NORMALIZATION
+   NORMALIZE DERIV SYMBOL
 ========================================================= */
 
 function normalizeDerivPair(name, symbol) {
@@ -294,7 +294,7 @@ function normalizeDerivPair(name, symbol) {
 
 
 /* =========================================================
-   LOAD DERIV ACTIVE SYMBOLS
+   LOAD ACTIVE SYMBOLS
 ========================================================= */
 
 async function loadActiveSymbols() {
@@ -310,10 +310,7 @@ async function loadActiveSymbols() {
 
     /*
       IMPORTANT:
-      Do NOT add product_type here.
-
-      The new Deriv API rejects:
-      product_type: "basic"
+      There is NO product_type here.
     */
 
     const response =
@@ -358,10 +355,6 @@ async function loadActiveSymbols() {
     }
 
 
-    /*
-      Clear previous mapping
-    */
-
     for (const key of Object.keys(symbolMap)) {
       delete symbolMap[key];
     }
@@ -373,13 +366,8 @@ async function loadActiveSymbols() {
 
 
     /*
-      Debug output.
-
-      This is especially useful for pairs such as:
-      USD/NOK
-      USD/HKD
-      CAD/JPY
-      NZD/CAD
+      Debug symbols that may need
+      special mapping.
     */
 
     for (const item of activeSymbols) {
@@ -403,7 +391,9 @@ async function loadActiveSymbols() {
         name.includes("NZD") ||
         name.includes("CAD") ||
         name.includes("NOK") ||
-        name.includes("HKD")
+        name.includes("HKD") ||
+        name.includes("GOLD") ||
+        name.includes("XAU")
       ) {
 
         console.log(
@@ -414,7 +404,7 @@ async function loadActiveSymbols() {
 
 
     /*
-      Build mapping
+      Map all requested pairs.
     */
 
     for (const item of activeSymbols) {
@@ -455,8 +445,7 @@ async function loadActiveSymbols() {
 
 
     /*
-      Gold may have different naming
-      depending on the Deriv feed.
+      Gold fallback.
     */
 
     if (!symbolMap["XAU/USD"]) {
@@ -497,11 +486,8 @@ async function loadActiveSymbols() {
     }
 
 
-    /*
-      Show final mapping status
-    */
-
     let mappedCount = 0;
+
 
     for (const pair of PAIRS) {
 
@@ -544,7 +530,7 @@ async function loadActiveSymbols() {
 
 
 /* =========================================================
-   DERIV REQUEST
+   SEND DERIV REQUEST
 ========================================================= */
 
 function sendDerivRequest(payload) {
@@ -661,16 +647,7 @@ function connectDeriv() {
 
           try {
 
-            const loaded =
-              await loadActiveSymbols();
-
-
-            if (!loaded) {
-
-              console.warn(
-                "[DERIV] Active symbols loaded but mapping may be incomplete"
-              );
-            }
+            await loadActiveSymbols();
 
 
             if (!settled) {
@@ -798,15 +775,9 @@ function connectDeriv() {
               )
             );
 
-            pendingRequests.delete(
-              id
-            );
+            pendingRequests.delete(id);
           }
 
-
-          /*
-            Reconnect after a delay.
-          */
 
           setTimeout(
             () => {
@@ -937,6 +908,202 @@ async function getCandles(
 
 
 /* =========================================================
+   BUILD 12H CANDLES FROM 1H
+========================================================= */
+
+function build12HCandles(
+  candles1H
+) {
+
+  if (
+    !candles1H ||
+    candles1H.length < 12
+  ) {
+
+    return [];
+  }
+
+
+  /*
+    Remove the currently forming
+    1H candle.
+
+    Only completed candles are
+    used to build 12H.
+  */
+
+  const completed1H =
+    candles1H.slice(0, -1);
+
+
+  const groups = {};
+
+
+  /*
+    Group candles into:
+
+    00:00 → 11:00 UTC
+
+    12:00 → 23:00 UTC
+  */
+
+  for (
+    const candle of completed1H
+  ) {
+
+    const date =
+      new Date(
+        candle.epoch * 1000
+      );
+
+
+    const year =
+      date.getUTCFullYear();
+
+    const month =
+      date.getUTCMonth();
+
+    const day =
+      date.getUTCDate();
+
+    const hour =
+      date.getUTCHours();
+
+
+    const halfDay =
+      hour < 12
+        ? 0
+        : 12;
+
+
+    const key =
+      `${year}-${month}-${day}-${halfDay}`;
+
+
+    if (!groups[key]) {
+
+      groups[key] = [];
+    }
+
+
+    groups[key].push(
+      candle
+    );
+  }
+
+
+  const result = [];
+
+
+  for (
+    const key of Object.keys(groups)
+  ) {
+
+    const group =
+      groups[key];
+
+
+    /*
+      A complete 12H candle
+      needs 12 completed 1H candles.
+    */
+
+    if (
+      group.length < 12
+    ) {
+
+      continue;
+    }
+
+
+    /*
+      Make sure the group really
+      represents 12 consecutive
+      1H candles.
+    */
+
+    group.sort(
+      (a, b) =>
+        a.epoch - b.epoch
+    );
+
+
+    let consecutive =
+      true;
+
+
+    for (
+      let i = 1;
+      i < group.length;
+      i++
+    ) {
+
+      if (
+        group[i].epoch -
+        group[i - 1].epoch !==
+        3600
+      ) {
+
+        consecutive = false;
+
+        break;
+      }
+    }
+
+
+    if (!consecutive) {
+      continue;
+    }
+
+
+    const first =
+      group[0];
+
+    const last =
+      group[group.length - 1];
+
+
+    result.push({
+
+      epoch:
+        first.epoch,
+
+      open:
+        first.open,
+
+      high:
+        Math.max(
+          ...group.map(
+            candle =>
+              candle.high
+          )
+        ),
+
+      low:
+        Math.min(
+          ...group.map(
+            candle =>
+              candle.low
+          )
+        ),
+
+      close:
+        last.close
+    });
+  }
+
+
+  result.sort(
+    (a, b) =>
+      a.epoch - b.epoch
+  );
+
+
+  return result;
+}
+
+
+/* =========================================================
    12H DIRECTION
 ========================================================= */
 
@@ -1013,6 +1180,7 @@ function get1HStructure(
 
 
   const swingHighs = [];
+
   const swingLows = [];
 
 
@@ -1111,8 +1279,7 @@ function get1HStructure(
 
 
   /*
-    Softer fallback so the scanner
-    doesn't become unnecessarily restrictive.
+    Softer fallback.
   */
 
   if (
@@ -1154,7 +1321,7 @@ function get1HStructure(
 
 
 /* =========================================================
-   WILLIAMS FRACTALS
+   WILLIAMS FRACTAL
 ========================================================= */
 
 function getFractals(
@@ -1190,9 +1357,11 @@ function getFractals(
       candles[i];
 
 
-    let downFractal = true;
+    let downFractal =
+      true;
 
-    let upFractal = true;
+    let upFractal =
+      true;
 
 
     for (
@@ -1208,7 +1377,8 @@ function getFractals(
           current.high
       ) {
 
-        downFractal = false;
+        downFractal =
+          false;
       }
 
 
@@ -1219,12 +1389,15 @@ function getFractals(
           current.low
       ) {
 
-        upFractal = false;
+        upFractal =
+          false;
       }
     }
 
 
-    if (downFractal) {
+    if (
+      downFractal
+    ) {
 
       downFractals.push({
 
@@ -1239,7 +1412,9 @@ function getFractals(
     }
 
 
-    if (upFractal) {
+    if (
+      upFractal
+    ) {
 
       upFractals.push({
 
@@ -1263,7 +1438,7 @@ function getFractals(
 
 
 /* =========================================================
-   TRENDLINE
+   CALCULATE FRACTAL TRENDLINE
 ========================================================= */
 
 function calculateTrendLine(
@@ -1309,7 +1484,8 @@ function calculateTrendLine(
 
     return {
 
-      type: "RESISTANCE",
+      type:
+        "RESISTANCE",
 
       first,
 
@@ -1349,7 +1525,8 @@ function calculateTrendLine(
 
     return {
 
-      type: "SUPPORT",
+      type:
+        "SUPPORT",
 
       first,
 
@@ -1510,9 +1687,7 @@ function check15MBreak(
 
 
   /*
-    BUY:
-    Previous candle is at/below line.
-    Latest completed candle closes above it.
+    BUY break
   */
 
   if (
@@ -1538,9 +1713,7 @@ function check15MBreak(
 
 
   /*
-    SELL:
-    Previous candle is at/above line.
-    Latest completed candle closes below it.
+    SELL break
   */
 
   if (
@@ -1657,7 +1830,7 @@ function calculateATR(
 
 
 /* =========================================================
-   RETEST
+   15M RETEST
 ========================================================= */
 
 function checkRetest(
@@ -2044,10 +2217,6 @@ function buildSignal(
   let takeProfit;
 
 
-  /*
-    BUY
-  */
-
   if (
     direction === "BULLISH"
   ) {
@@ -2074,14 +2243,8 @@ function buildSignal(
       entry +
       risk *
         RISK_REWARD;
-  }
 
-
-  /*
-    SELL
-  */
-
-  else if (
+  } else if (
     direction === "BEARISH"
   ) {
 
@@ -2107,10 +2270,8 @@ function buildSignal(
       entry -
       risk *
         RISK_REWARD;
-  }
 
-
-  else {
+  } else {
 
     return null;
   }
@@ -2229,7 +2390,7 @@ async function sendTelegram(
 
 
 /* =========================================================
-   FORMAT TELEGRAM SIGNAL
+   FORMAT SIGNAL
 ========================================================= */
 
 function formatSignal(
@@ -2296,50 +2457,38 @@ function resetPairForScan(
   currentState.status =
     "SCANNING";
 
-
   currentState.signal =
     null;
-
 
   currentState.entry =
     null;
 
-
   currentState.stopLoss =
     null;
-
 
   currentState.takeProfit =
     null;
 
-
   currentState.error =
     null;
-
 
   currentState.direction12H =
     "WAIT";
 
-
   currentState.structure1H =
     "WAIT";
-
 
   currentState.trend15M =
     "WAIT";
 
-
   currentState.break15M =
     "WAIT";
-
 
   currentState.retest15M =
     "WAIT";
 
-
   currentState.confirm5M =
     "WAIT";
-
 
   currentState.lastUpdate =
     new Date().toISOString();
@@ -2380,26 +2529,33 @@ async function scanPair(
   try {
 
     /*
-      12H
-    */
+      IMPORTANT:
 
-    const candles12H =
-      await getCandles(
-        pair,
-        43200,
-        100
-      );
+      We request 1H once.
 
+      The same 1H candles are used
+      for both:
 
-    /*
-      1H
+      1H structure
+      and
+      constructed 12H candles.
     */
 
     const candles1H =
       await getCandles(
         pair,
         3600,
-        100
+        150
+      );
+
+
+    /*
+      Build 12H from completed 1H.
+    */
+
+    const candles12H =
+      build12HCandles(
+        candles1H
       );
 
 
@@ -2428,7 +2584,7 @@ async function scanPair(
 
 
     /*
-      Direction
+      12H direction
     */
 
     const direction12H =
@@ -2453,7 +2609,7 @@ async function scanPair(
 
 
     /*
-      1H
+      1H structure
     */
 
     const structure1H =
@@ -2467,8 +2623,8 @@ async function scanPair(
 
 
     /*
-      Require 12H and 1H
-      to agree.
+      Require agreement between
+      12H and 1H.
     */
 
     if (
@@ -2484,7 +2640,7 @@ async function scanPair(
 
 
     /*
-      15M trendline
+      15M trend
     */
 
     const trend15M =
@@ -2539,7 +2695,7 @@ async function scanPair(
 
 
     /*
-      New break detected
+      New break.
     */
 
     if (
@@ -2571,11 +2727,6 @@ async function scanPair(
       );
     }
 
-
-    /*
-      If no active setup,
-      stop here.
-    */
 
     if (
       !state.setup.active
@@ -2681,7 +2832,7 @@ async function scanPair(
 
 
     /*
-      Build signal
+      Build final signal.
     */
 
     const signal =
@@ -2701,14 +2852,14 @@ async function scanPair(
     }
 
 
-    /*
-      Prevent repeated Telegram
-      alerts for the same 5M candle.
-    */
-
     const signalEpoch =
       confirmation5M.epoch;
 
+
+    /*
+      Don't send the exact same
+      signal repeatedly.
+    */
 
     if (
       state.lastSignalEpoch ===
@@ -2765,11 +2916,6 @@ async function scanPair(
     );
 
 
-    /*
-      Clear setup after signal
-      so the same setup isn't reused.
-    */
-
     clearSetup(
       state
     );
@@ -2797,7 +2943,6 @@ async function scanPair(
 
     state.status =
       "ERROR";
-
 
     state.error =
       error.message;
@@ -2835,9 +2980,7 @@ async function scanAllPairs() {
   }
 
 
-  if (
-    !derivConnected
-  ) {
+  if (!derivConnected) {
 
     console.log(
       "[SCAN] Deriv not connected"
@@ -2847,13 +2990,12 @@ async function scanAllPairs() {
   }
 
 
-  if (
-    !activeSymbolsLoaded
-  ) {
+  if (!activeSymbolsLoaded) {
 
     console.log(
       "[SCAN] Active symbols not loaded"
     );
+
 
     try {
 
@@ -2902,8 +3044,7 @@ async function scanAllPairs() {
 
 
       /*
-        Small delay between pairs
-        to avoid hitting the feed too aggressively.
+        Small delay between pairs.
       */
 
       await sleep(350);
@@ -2921,6 +3062,7 @@ async function scanAllPairs() {
     scanRunning =
       false;
 
+
     console.log(
       "[SCAN] Scan complete"
     );
@@ -2929,7 +3071,7 @@ async function scanAllPairs() {
 
 
 /* =========================================================
-   API: STATUS
+   STATUS API
 ========================================================= */
 
 app.get(
@@ -2986,7 +3128,7 @@ app.get(
 
 
 /* =========================================================
-   API: SYMBOLS
+   SYMBOL API
 ========================================================= */
 
 app.get(
@@ -3027,7 +3169,7 @@ app.get(
 
 
 /* =========================================================
-   API: MANUAL SCAN
+   MANUAL SCAN API
 ========================================================= */
 
 app.post(
@@ -3061,7 +3203,7 @@ app.post(
 
 
 /* =========================================================
-   API: HEALTH
+   HEALTH
 ========================================================= */
 
 app.get(
@@ -3104,7 +3246,7 @@ app.get(
 
 
 /* =========================================================
-   START SERVER
+   START
 ========================================================= */
 
 app.listen(
@@ -3132,6 +3274,10 @@ app.listen(
     );
 
     console.log(
+      "12H is constructed from completed 1H candles"
+    );
+
+    console.log(
       "Strategy:"
     );
 
@@ -3156,15 +3302,11 @@ app.listen(
 
       await connectDeriv();
 
+
       console.log(
         "[DERIV] Initial connection complete"
       );
 
-
-      /*
-        Start first scan shortly
-        after connection.
-      */
 
       setTimeout(
         () => {
