@@ -2438,4 +2438,1292 @@ function buildSignal(
       ),
 
     riskReward:
-     
+      RISK_REWARD,
+
+    timeframe:
+      "5M",
+
+    strategy:
+      "12H → 1H → 15M Williams Fractal → Break → Retest → 5M"
+
+  };
+
+}
+
+/*
+===========================================================
+TELEGRAM
+===========================================================
+*/
+
+async function sendTelegram(
+  message
+) {
+
+  if (
+
+    !TELEGRAM_BOT_TOKEN ||
+    !TELEGRAM_CHAT_ID
+
+  ) {
+
+    console.log(
+      "[TELEGRAM] Credentials not configured"
+    );
+
+    return;
+
+  }
+
+  try {
+
+    const url =
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+    const response =
+      await fetch(
+        url,
+        {
+
+          method:
+            "POST",
+
+          headers: {
+
+            "Content-Type":
+              "application/json"
+
+          },
+
+          body:
+            JSON.stringify({
+
+              chat_id:
+                TELEGRAM_CHAT_ID,
+
+              text:
+                message
+
+            })
+
+        }
+      );
+
+    if (
+      !response.ok
+    ) {
+
+      console.error(
+        "[TELEGRAM] HTTP error:",
+        response.status
+      );
+
+    } else {
+
+      console.log(
+        "[TELEGRAM] Signal sent"
+      );
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "[TELEGRAM] Error:",
+      error.message
+    );
+
+  }
+
+}
+
+/*
+===========================================================
+FORMAT TELEGRAM SIGNAL
+===========================================================
+*/
+
+function formatSignal(
+  signal
+) {
+
+  const direction =
+    signal.direction ===
+    "BULLISH"
+      ? "BUY"
+      : "SELL";
+
+  const isGold =
+    signal.pair ===
+    "XAU/USD";
+
+  return `
+🚨 ${isGold ? "GOLD" : "FOREX"} SIGNAL
+
+Pair: ${signal.pair}
+
+Direction: ${direction}
+
+Entry: ${signal.entry}
+
+SL: ${signal.stopLoss}
+
+TP: ${signal.takeProfit}
+
+Risk/Reward: 1:${signal.riskReward}
+
+Timeframe: 5M
+
+Strategy:
+12H Direction ↓
+1H Structure ↓
+15M Williams Fractal Trend Line ↓
+15M Candle Close Break ↓
+15M Retest / Rejection ↓
+5M Confirmation
+
+Signal only — no automatic trade.
+`;
+
+}
+
+/*
+===========================================================
+CLEAR SETUP
+===========================================================
+*/
+
+function clearSetup(
+  currentState
+) {
+
+  currentState.setup = {
+
+    active: false,
+
+    direction: null,
+
+    breakEpoch: null,
+
+    line: null,
+
+    linePrice: null,
+
+    retestEpoch: null
+
+  };
+
+}
+
+/*
+===========================================================
+RESET SCAN VALUES
+===========================================================
+IMPORTANT:
+Do NOT clear the active setup here.
+The setup needs to survive between scans.
+===========================================================
+*/
+
+function resetPairForScan(
+  currentState
+) {
+
+  currentState.status =
+    "SCANNING";
+
+  currentState.signal =
+    null;
+
+  currentState.entry =
+    null;
+
+  currentState.stopLoss =
+    null;
+
+  currentState.takeProfit =
+    null;
+
+  currentState.error =
+    null;
+
+  currentState.direction12H =
+    "WAIT";
+
+  currentState.structure1H =
+    "WAIT";
+
+  currentState.trend15M =
+    "WAIT";
+
+  currentState.break15M =
+    "WAIT";
+
+  currentState.retest15M =
+    "WAIT";
+
+  currentState.confirm5M =
+    "WAIT";
+
+  currentState.lastUpdate =
+    new Date().toISOString();
+
+}
+
+/*
+===========================================================
+SCAN ONE PAIR
+===========================================================
+*/
+
+async function scanPair(
+  pair
+) {
+
+  const currentState =
+    state[pair];
+
+  resetPairForScan(
+    currentState
+  );
+
+  /*
+  ---------------------------------------------------------
+  CHECK SYMBOL
+  ---------------------------------------------------------
+  */
+
+  if (
+    !symbolMap[pair]
+  ) {
+
+    currentState.status =
+      "WAIT";
+
+    currentState.error =
+      "No Deriv symbol found";
+
+    console.log(
+      `[SCAN] ${pair} | STATUS: WAIT — SYMBOL NOT MAPPED`
+    );
+
+    return;
+
+  }
+
+  try {
+
+    /*
+    =======================================================
+    1H DATA
+    =======================================================
+    */
+
+    const candles1H =
+      await getCandles(
+        pair,
+        H1,
+        MAX_CANDLES
+      );
+
+    /*
+    =======================================================
+    12H DIRECTION
+    =======================================================
+    */
+
+    const candles12H =
+      build12HCandles(
+        candles1H
+      );
+
+    const direction12H =
+      get12HDirection(
+        candles12H
+      );
+
+    currentState.direction12H =
+      direction12H;
+
+    console.log(
+      `[SCAN] ${pair} | 12H: ${direction12H}`
+    );
+
+    if (
+      direction12H ===
+      "WAIT"
+    ) {
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "12H direction not confirmed";
+
+      console.log(
+        `[SCAN] ${pair} | STATUS: WAIT — 12H`
+      );
+
+      return;
+
+    }
+
+    /*
+    =======================================================
+    1H STRUCTURE
+    =======================================================
+    */
+
+    const structure1H =
+      get1HStructure(
+        candles1H
+      );
+
+    currentState.structure1H =
+      structure1H;
+
+    console.log(
+      `[SCAN] ${pair} | 1H: ${structure1H}`
+    );
+
+    /*
+    1H must agree with 12H.
+    */
+
+    if (
+      structure1H !==
+      direction12H
+    ) {
+
+      clearSetup(
+        currentState
+      );
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "1H structure does not confirm 12H";
+
+      console.log(
+        `[SCAN] ${pair} | STATUS: WAIT — 1H STRUCTURE`
+      );
+
+      return;
+
+    }
+
+    /*
+    =======================================================
+    15M DATA
+    =======================================================
+    */
+
+    const candles15M =
+      await getCandles(
+        pair,
+        M15,
+        MAX_CANDLES
+      );
+
+    /*
+    =======================================================
+    15M TRENDLINE
+    =======================================================
+    */
+
+    const trend15M =
+      get15MTrend(
+        candles15M,
+        direction12H
+      );
+
+    currentState.trend15M =
+      trend15M.direction;
+
+    console.log(
+      `[SCAN] ${pair} | 15M TREND: ${trend15M.direction}`
+    );
+
+    /*
+    =======================================================
+    15M BREAK
+    =======================================================
+    */
+
+    const break15M =
+      check15MBreak(
+        candles15M,
+        direction12H
+      );
+
+    if (
+      break15M &&
+      break15M.confirmed
+    ) {
+
+      currentState.break15M =
+        direction12H;
+
+      /*
+      Only create a new setup if
+      this is a new break candle.
+      */
+
+      if (
+        !currentState.setup.active ||
+        currentState.setup.breakEpoch !==
+          break15M.epoch
+      ) {
+
+        currentState.setup = {
+
+          active: true,
+
+          direction:
+            direction12H,
+
+          breakEpoch:
+            break15M.epoch,
+
+          line:
+            break15M.line,
+
+          linePrice:
+            break15M.linePrice,
+
+          retestEpoch:
+            null
+
+        };
+
+        console.log(
+          `[SCAN] ${pair} | NEW 15M BREAK: ${direction12H}`
+        );
+
+      }
+
+    } else {
+
+      currentState.break15M =
+        "WAIT";
+
+    }
+
+    /*
+    =======================================================
+    IF NO ACTIVE SETUP
+    =======================================================
+    */
+
+    if (
+      !currentState.setup.active
+    ) {
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "Waiting for 15M trendline break";
+
+      console.log(
+        `[SCAN] ${pair} | STATUS: WAIT — 15M BREAK`
+      );
+
+      return;
+
+    }
+
+    /*
+    Make sure setup direction
+    still agrees with current 12H.
+    */
+
+    if (
+      currentState.setup.direction !==
+      direction12H
+    ) {
+
+      clearSetup(
+        currentState
+      );
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "Setup direction changed";
+
+      return;
+
+    }
+
+    /*
+    =======================================================
+    CHECK RETEST
+    =======================================================
+    */
+
+    const retest15M =
+      checkRetest(
+        candles15M,
+        direction12H,
+        currentState.setup
+      );
+
+    if (
+      retest15M &&
+      retest15M.expired
+    ) {
+
+      console.log(
+        `[SCAN] ${pair} | 15M RETEST EXPIRED`
+      );
+
+      clearSetup(
+        currentState
+      );
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "15M break setup expired";
+
+      return;
+
+    }
+
+    if (
+      retest15M &&
+      retest15M.confirmed
+    ) {
+
+      currentState.retest15M =
+        direction12H;
+
+      /*
+      Save retest candle.
+      */
+
+      if (
+        currentState.setup.retestEpoch !==
+        retest15M.epoch
+      ) {
+
+        currentState.setup.retestEpoch =
+          retest15M.epoch;
+
+        console.log(
+          `[SCAN] ${pair} | 15M RETEST: CONFIRMED`
+        );
+
+      }
+
+    } else {
+
+      currentState.retest15M =
+        "WAIT";
+
+    }
+
+    /*
+    =======================================================
+    NO RETEST YET
+    =======================================================
+    */
+
+    if (
+      !currentState.setup.retestEpoch
+    ) {
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "Waiting for 15M retest/rejection";
+
+      console.log(
+        `[SCAN] ${pair} | STATUS: WAIT — RETEST`
+      );
+
+      return;
+
+    }
+
+    /*
+    =======================================================
+    RETEST AGE PROTECTION
+    =======================================================
+    */
+
+    const latestCompleted15M =
+      candles15M[
+        candles15M.length - 2
+      ];
+
+    const retestAge =
+      latestCompleted15M.epoch -
+      currentState.setup.retestEpoch;
+
+    if (
+      retestAge >
+      MAX_RETEST_AGE_15M
+    ) {
+
+      console.log(
+        `[SCAN] ${pair} | RETEST EXPIRED`
+      );
+
+      clearSetup(
+        currentState
+      );
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "Retest became too old";
+
+      return;
+
+    }
+
+    /*
+    =======================================================
+    5M DATA
+    =======================================================
+    */
+
+    const candles5M =
+      await getCandles(
+        pair,
+        M5,
+        MAX_CANDLES
+      );
+
+    /*
+    =======================================================
+    5M CONFIRMATION
+    =======================================================
+    */
+
+    const confirmation5M =
+      check5MConfirmation(
+        candles5M,
+        direction12H,
+        currentState.setup.retestEpoch
+      );
+
+    currentState.confirm5M =
+      confirmation5M.confirmed
+        ? direction12H
+        : "WAIT";
+
+    console.log(
+      `[SCAN] ${pair} | 5M: ${
+        confirmation5M.confirmed
+          ? direction12H
+          : "WAIT"
+      }`
+    );
+
+    /*
+    =======================================================
+    WAIT FOR 5M CONFIRMATION
+    =======================================================
+    */
+
+    if (
+      !confirmation5M.confirmed
+    ) {
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "Waiting for 5M confirmation";
+
+      console.log(
+        `[SCAN] ${pair} | STATUS: WAIT — 5M CONFIRMATION`
+      );
+
+      return;
+
+    }
+
+    /*
+    =======================================================
+    BUILD SIGNAL
+    =======================================================
+    */
+
+    const signal =
+      buildSignal(
+        pair,
+        direction12H,
+        candles5M
+      );
+
+    if (!signal) {
+
+      currentState.status =
+        "WAIT";
+
+      currentState.error =
+        "Unable to build valid risk/reward";
+
+      console.log(
+        `[SCAN] ${pair} | STATUS: WAIT — SIGNAL BUILD`
+      );
+
+      return;
+
+    }
+
+    /*
+    =======================================================
+    DUPLICATE ALERT PROTECTION
+    =======================================================
+    */
+
+    const alertKey =
+      `${pair}|${direction12H}|${currentState.setup.retestEpoch}|${confirmation5M.epoch}`;
+
+    /*
+    Store signal in dashboard state.
+    */
+
+    currentState.signal =
+      signal;
+
+    currentState.entry =
+      signal.entry;
+
+    currentState.stopLoss =
+      signal.stopLoss;
+
+    currentState.takeProfit =
+      signal.takeProfit;
+
+    currentState.status =
+      direction12H ===
+      "BULLISH"
+        ? "BUY"
+        : "SELL";
+
+    currentState.error =
+      null;
+
+    /*
+    Only send Telegram once
+    for this exact setup.
+    */
+
+    if (
+      currentState.lastAlertKey !==
+      alertKey
+    ) {
+
+      currentState.lastAlertKey =
+        alertKey;
+
+      console.log(
+        `[SCAN] ${pair} | =================================`
+      );
+
+      console.log(
+        `[SCAN] ${pair} | SIGNAL CONFIRMED`
+      );
+
+      console.log(
+        `[SCAN] ${pair} | DIRECTION: ${
+          direction12H ===
+          "BULLISH"
+            ? "BUY"
+            : "SELL"
+        }`
+      );
+
+      console.log(
+        `[SCAN] ${pair} | ENTRY: ${signal.entry}`
+      );
+
+      console.log(
+        `[SCAN] ${pair} | SL: ${signal.stopLoss}`
+      );
+
+      console.log(
+        `[SCAN] ${pair} | TP: ${signal.takeProfit}`
+      );
+
+      console.log(
+        `[SCAN] ${pair} | RR: 1:${signal.riskReward}`
+      );
+
+      console.log(
+        `[SCAN] ${pair} | =================================`
+      );
+
+      await sendTelegram(
+        formatSignal(signal)
+      );
+
+    } else {
+
+      console.log(
+        `[SCAN] ${pair} | Duplicate signal ignored`
+      );
+
+    }
+
+    /*
+    Setup is complete.
+    Clear it so another setup must
+    form before another signal.
+    */
+
+    clearSetup(
+      currentState
+    );
+
+  } catch (error) {
+
+    const message =
+      error.message ||
+      String(error);
+
+    if (
+      isMarketClosedError(
+        message
+      )
+    ) {
+
+      marketClosed = true;
+
+      currentState.status =
+        "MARKET CLOSED";
+
+      currentState.error =
+        "MARKET CLOSED";
+
+      console.log(
+        `[SCAN] ${pair}: MARKET CLOSED`
+      );
+
+      return;
+
+    }
+
+    currentState.status =
+      "ERROR";
+
+    currentState.error =
+      message;
+
+    console.error(
+      `[SCAN] ${pair} ERROR:`,
+      message
+    );
+
+  } finally {
+
+    currentState.lastUpdate =
+      new Date().toISOString();
+
+  }
+
+}
+
+/*
+===========================================================
+SCAN ALL PAIRS
+===========================================================
+*/
+
+async function scanAllPairs() {
+
+  if (
+    scannerRunning
+  ) {
+
+    console.log(
+      "[SCAN] Scanner already running"
+    );
+
+    return;
+
+  }
+
+  if (
+    !derivConnected
+  ) {
+
+    console.log(
+      "[SCAN] Deriv not connected yet"
+    );
+
+    return;
+
+  }
+
+  if (
+    !activeSymbolsLoaded ||
+    Object.keys(symbolMap).length === 0
+  ) {
+
+    console.log(
+      "[SCAN] Deriv symbols not loaded yet"
+    );
+
+    return;
+
+  }
+
+  scannerRunning = true;
+
+  marketClosed = false;
+
+  lastScan =
+    new Date().toISOString();
+
+  console.log(
+    "\n=============================================="
+  );
+
+  console.log(
+    `[SCAN] Starting scan of ${PAIRS.length} markets`
+  );
+
+  console.log(
+    "=============================================="
+  );
+
+  try {
+
+    for (
+      const pair
+      of PAIRS
+    ) {
+
+      console.log(
+        `\n[SCAN] =============================`
+      );
+
+      console.log(
+        `[SCAN] Checking ${pair}`
+      );
+
+      await scanPair(
+        pair
+      );
+
+      /*
+      Small delay between markets.
+      This reduces unnecessary pressure
+      on the WebSocket connection.
+      */
+
+      await sleep(300);
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "[SCAN] Global error:",
+      error.message
+    );
+
+  } finally {
+
+    scannerRunning = false;
+
+    console.log(
+      "\n=============================================="
+    );
+
+    console.log(
+      "[SCAN] Scan complete"
+    );
+
+    console.log(
+      "==============================================\n"
+    );
+
+  }
+
+}
+
+/*
+===========================================================
+API: STATUS
+===========================================================
+*/
+
+app.get(
+  "/api/status",
+  (req, res) => {
+
+    res.json({
+
+      success: true,
+
+      system: {
+
+        derivConnected,
+
+        activeSymbolsLoaded,
+
+        marketClosed,
+
+        scannerRunning,
+
+        lastScan,
+
+        pairCount:
+          PAIRS.length,
+
+        forexPairs:
+          30,
+
+        goldPairs:
+          1,
+
+        mappedPairs:
+          Object.keys(
+            symbolMap
+          ).length
+
+      },
+
+      pairs:
+        state
+
+    });
+
+  }
+);
+
+/*
+===========================================================
+API: HEALTH
+===========================================================
+*/
+
+app.get(
+  "/health",
+  (req, res) => {
+
+    res.json({
+
+      status:
+        "ok",
+
+      derivConnected,
+
+      activeSymbolsLoaded,
+
+      marketClosed,
+
+      scannerRunning,
+
+      pairCount:
+        PAIRS.length,
+
+      mappedPairs:
+        Object.keys(
+          symbolMap
+        ).length,
+
+      time:
+        new Date().toISOString()
+
+    });
+
+  }
+);
+
+/*
+===========================================================
+API: MANUAL SCAN
+===========================================================
+*/
+
+app.post(
+  "/api/scan",
+  async (req, res) => {
+
+    if (
+      scannerRunning
+    ) {
+
+      return res.json({
+
+        success:
+          false,
+
+        message:
+          "Scanner already running"
+
+      });
+
+    }
+
+    /*
+    Start scan without making
+    the HTTP request wait for all
+    31 markets.
+    */
+
+    scanAllPairs();
+
+    res.json({
+
+      success:
+        true,
+
+      message:
+        "Scan started"
+
+    });
+
+  }
+);
+
+/*
+===========================================================
+API: SYMBOLS
+===========================================================
+*/
+
+app.get(
+  "/api/symbols",
+  (req, res) => {
+
+    res.json({
+
+      success:
+        true,
+
+      total:
+        PAIRS.length,
+
+      mapped:
+        Object.keys(
+          symbolMap
+        ).length,
+
+      symbols:
+        symbolMap
+
+    });
+
+  }
+);
+
+/*
+===========================================================
+ROOT
+===========================================================
+*/
+
+app.get(
+  "/",
+  (req, res) => {
+
+    res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "index.html"
+      )
+    );
+
+  }
+);
+
+/*
+===========================================================
+START SERVER
+===========================================================
+*/
+
+app.listen(
+  PORT,
+  () => {
+
+    console.log(
+      "=============================================="
+    );
+
+    console.log(
+      `Server running on port ${PORT}`
+    );
+
+    console.log(
+      `Watching ${PAIRS.length} markets`
+    );
+
+    console.log(
+      "Forex pairs: 30"
+    );
+
+    console.log(
+      "Gold: XAU/USD"
+    );
+
+    console.log(
+      "Strategy:"
+    );
+
+    console.log(
+      "12H → 1H → 15M Williams Fractal → Break → Retest → 5M"
+    );
+
+    console.log(
+      "Risk/Reward: 1:2"
+    );
+
+    console.log(
+      "Signal only — no automatic trading"
+    );
+
+    console.log(
+      "=============================================="
+    );
+
+    /*
+    Connect to Deriv.
+    */
+
+    connectDeriv();
+
+    /*
+    First scan after 10 seconds.
+    */
+
+    setTimeout(
+      () => {
+
+        scanAllPairs();
+
+      },
+      10000
+    );
+
+    /*
+    Continue scanning every minute.
+    */
+
+    setInterval(
+      () => {
+
+        scanAllPairs();
+
+      },
+      SCAN_INTERVAL
+    );
+
+  }
+);
