@@ -371,6 +371,39 @@ async function loadActiveSymbols() {
     }
 
     activeSymbols = response.active_symbols || [];
+    console.log("========== DERIV SYMBOL DEBUG ==========");
+
+for (const item of activeSymbols) {
+  const name =
+    item.underlying_symbol_name ||
+    item.display_name ||
+    item.name ||
+    "";
+
+  const symbol =
+    item.underlying_symbol ||
+    item.symbol ||
+    "";
+
+  const text =
+    `${name} ${symbol}`.toUpperCase();
+
+  if (
+    text.includes("SGD") ||
+    text.includes("HKD") ||
+    text.includes("NOK") ||
+    text.includes("SEK") ||
+    text.includes("CAD") ||
+    text.includes("CHF") ||
+    text.includes("NZD")
+  ) {
+    console.log(
+      `[DERIV DEBUG] name="${name}" symbol="${symbol}"`
+    );
+  }
+}
+
+console.log("========== END DEBUG ==========");
 
     console.log(
       `[DERIV] Received ${activeSymbols.length} active symbols`
