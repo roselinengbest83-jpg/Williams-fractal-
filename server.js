@@ -25,8 +25,6 @@ const FRACTAL_PERIODS = 2;
 
 const MAX_CANDLES = 150;
 
-const SCAN_INTERVAL_MS = 5 * 60 * 1000;
-
 // A breakout must be retested within 2 hours.
 const MAX_BREAK_AGE_15M = 2 * 60 * 60;
 
@@ -37,6 +35,15 @@ const MAX_CONFIRM_AGE_5M = 30 * 60;
 const RETEST_ATR_MULTIPLIER = 0.20;
 
 const SIGNAL_SCORE_THRESHOLD = 8;
+
+// Max distance price may have moved past the entry, in units of risk (R).
+// 0.25 means: if price is more than 1/4 of the stop distance past entry, skip.
+const MAX_CHASE_R = 0.25;
+
+// Wait this long after each 5M candle closes before scanning,
+// so Deriv has finalized the candle.
+const SCAN_DELAY_AFTER_CLOSE_MS = 5000;
+const M5_MS = 5 * 60 * 1000;
 
 /* =========================================================
    MARKETS
@@ -373,37 +380,37 @@ async function loadActiveSymbols() {
     activeSymbols = response.active_symbols || [];
     console.log("========== DERIV SYMBOL DEBUG ==========");
 
-for (const item of activeSymbols) {
-  const name =
-    item.underlying_symbol_name ||
-    item.display_name ||
-    item.name ||
-    "";
+    for (const item of activeSymbols) {
+      const name =
+        item.underlying_symbol_name ||
+        item.display_name ||
+        item.name ||
+        "";
 
-  const symbol =
-    item.underlying_symbol ||
-    item.symbol ||
-    "";
+      const symbol =
+        item.underlying_symbol ||
+        item.symbol ||
+        "";
 
-  const text =
-    `${name} ${symbol}`.toUpperCase();
+      const text =
+        `${name} ${symbol}`.toUpperCase();
 
-  if (
-    text.includes("SGD") ||
-    text.includes("HKD") ||
-    text.includes("NOK") ||
-    text.includes("SEK") ||
-    text.includes("CAD") ||
-    text.includes("CHF") ||
-    text.includes("NZD")
-  ) {
-    console.log(
-      `[DERIV DEBUG] name="${name}" symbol="${symbol}"`
-    );
-  }
-}
+      if (
+        text.includes("SGD") ||
+        text.includes("HKD") ||
+        text.includes("NOK") ||
+        text.includes("SEK") ||
+        text.includes("CAD") ||
+        text.includes("CHF") ||
+        text.includes("NZD")
+      ) {
+        console.log(
+          `[DERIV DEBUG] name="${name}" symbol="${symbol}"`
+        );
+      }
+    }
 
-console.log("========== END DEBUG ==========");
+    console.log("========== END DEBUG ==========");
 
     console.log(
       `[DERIV] Received ${activeSymbols.length} active symbols`
@@ -2319,6 +2326,113 @@ function get15MTrendStatus(
 }
 
 /* =========================================================
+   FRESHNESS CHECK
+========================================================= */
+
+/*
+   The last candle in candles5M is still forming, so its
+   close is the live price. Reject the signal if price has
+   already moved too far from the entry, reached the take
+   profit, or passed the stop loss.
+*/
+function checkSignalFreshness(
+  signal,
+  candles5M
+) {
+  const live =
+    candles5M[
+      candles5M.length - 1
+    ];
+
+  if (
+    !live ||
+    !Number.isFinite(
+      live.close
+    )
+  ) {
+    return {
+      fresh: false,
+      reason: "No live price available"
+    };
+  }
+
+  const currentPrice =
+    live.close;
+
+  const sign =
+    signal.signalType === "BUY"
+      ? 1
+      : -1;
+
+  const risk =
+    Math.abs(
+      signal.entry -
+        signal.stopLoss
+    );
+
+  if (risk <= 0) {
+    return {
+      fresh: false,
+      reason: "Invalid risk distance"
+    };
+  }
+
+  // Positive = price has moved in the trade's direction since entry.
+  const movedFromEntry =
+    (currentPrice - signal.entry) *
+    sign;
+
+  const tpDistance =
+    (signal.takeProfit -
+      signal.entry) *
+    sign;
+
+  // Price already through the stop.
+  if (
+    (currentPrice -
+      signal.stopLoss) *
+      sign <=
+    0
+  ) {
+    return {
+      fresh: false,
+      reason: "Price already through stop loss"
+    };
+  }
+
+  // Take profit already reached.
+  if (
+    movedFromEntry >=
+    tpDistance
+  ) {
+    return {
+      fresh: false,
+      reason: "Take profit already reached"
+    };
+  }
+
+  // Too far past entry: the remaining reward is too small.
+  const movedR =
+    movedFromEntry / risk;
+
+  if (
+    movedR > MAX_CHASE_R
+  ) {
+    return {
+      fresh: false,
+      reason:
+        `Price moved ${movedR.toFixed(2)}R past entry (max ${MAX_CHASE_R}R)`
+    };
+  }
+
+  return {
+    fresh: true,
+    currentPrice,
+    movedR
+  };
+}
+
+/* =========================================================
    MAIN SCAN
 ========================================================= */
 
@@ -2792,6 +2906,41 @@ async function scanPair(
           }
 
           /*
+            Freshness check: skip the
+            signal if price has already
+            run past the entry.
+          */
+
+          const freshness =
+            checkSignalFreshness(
+              signal,
+              candles5M
+            );
+
+          if (!freshness.fresh) {
+            console.log(
+              `[${pair}] Signal skipped: ${freshness.reason}`
+            );
+
+            state.status =
+              "SIGNAL SKIPPED (LATE)";
+
+            state.error =
+              freshness.reason;
+
+            state.lastUpdate =
+              new Date().toISOString();
+
+            clearSetup(state);
+
+            return;
+          }
+
+          console.log(
+            `[${pair}] Fresh: live ${freshness.currentPrice}, ${freshness.movedR.toFixed(2)}R from entry`
+          );
+
+          /*
             Prevent duplicate alerts.
           */
 
@@ -2970,6 +3119,48 @@ async function scanAll() {
 }
 
 /* =========================================================
+   SCHEDULER: SCAN JUST AFTER EACH 5M CANDLE CLOSES
+========================================================= */
+
+function msUntilNextScan() {
+  const now =
+    Date.now();
+
+  // Next 5-minute boundary aligned to UTC, matching Deriv's candle epochs.
+  const nextBoundary =
+    Math.floor(now / M5_MS) * M5_MS +
+    M5_MS;
+
+  return (
+    nextBoundary -
+    now +
+    SCAN_DELAY_AFTER_CLOSE_MS
+  );
+}
+
+function scheduleScan() {
+  const delay =
+    msUntilNextScan();
+
+  console.log(
+    `[SCHEDULER] Next scan in ${Math.round(delay / 1000)}s`
+  );
+
+  setTimeout(() => {
+    scanAll()
+      .catch(error =>
+        console.error(
+          "[AUTO SCAN]",
+          error.message
+        )
+      )
+      .finally(() =>
+        scheduleScan()
+      );
+  }, delay);
+}
+
+/* =========================================================
    API: STATUS
 ========================================================= */
 
@@ -3142,17 +3333,9 @@ app.listen(
     }, 5000);
 
     /*
-      Automatic scan every 5 minutes.
+      Scan just after each 5M candle closes.
     */
 
-    setInterval(() => {
-      scanAll().catch(
-        error =>
-          console.error(
-            "[AUTO SCAN]",
-            error.message
-          )
-      );
-    }, SCAN_INTERVAL_MS);
+    scheduleScan();
   }
 );
